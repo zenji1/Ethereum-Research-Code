@@ -1,0 +1,93 @@
+By default most ethereum client RPCs are not password protected.
+For this solution, the client used can be Parity or Geth, the two most common Ethereum clients.
+
+First, it goes without saying to create a strong password for your Parity or Geth account.
+
+Next, install and configure Nginx.
+Do this by inputting the following commands into your CLI:
+
+$ sudo apt-get update
+$ sudo apt-get install nginx
+
+Next we want to set HTTP Auth basic credentials.
+A password for the user running the node can be created by inputting the following command into your CLI:
+
+$ sudo htpasswd -c /etc/nginx/.htpasswd nginx
+
+This creates a new file that has your encrypted password and associated username.
+To view this, enter into your CLI:
+
+$ cat /etc/nginx/.htpasswd
+
+The HTTP Auth basic credentials have been created.
+Next we need to update the Nginx configuration.
+Do this by inputting the following into your CLI:
+
+$ sudo nano /etc/nginx/sites-available/default
+
+This command should open a text editor to change the configuration.
+Update the file to contain:
+
+server {
+ listen 80;
+ listen [::]:80;
+ # ADDED THESE TWO LINES FOR AUTHENTICATION
+auth_basic “Protected Ethereum client”;
+auth_basic_user_file /path/to/passwords; 
+ server_name example.com;
+ location / {
+      proxy_pass http://localhost:8545/;
+      proxy_set_header Host $host;
+ }
+}
+
+Now reload your client by inputting the following into your CLI:
+
+$ sudo service nginx reload
+
+The RPC url can now be accessed at:
+
+http://<USERNAME>:<PASSWORD>@mydomain.com
+
+<USERNAME> and <PASSWORD> should be replaced with your username and password created earlier.
+
+Next we want to set up a firewall.
+We will do this by installing UFW, or Uncomplicated FireWall.
+To install UFW, enter the following into your CLI:
+
+$ sudo apt-get install ufw
+
+Next we want to set default settings by entering the following into your CLI:
+
+$ sudo ufw default deny incoming
+$ sudo ufw default allow outgoing
+
+To allow your client to communicate and sync with the public Ethereum network,
+enter the following into your CLI:
+
+$ sudo ufw allow 30303
+
+30303 is the Ethereum network port.
+Next we will allow connections from safe trusted nodes by inputting the following into your CLI:
+
+$ sudo ufw allow from <IP addr> to any port 8545
+
+<IP addr> should be replaced with the ip address of trusted nodes only.
+If the port you are using is not 8545, change the port in the command accordingly.
+Now enable UFW by inputting the following into your CLI:
+
+$ sudo ufw enable
+
+Now UFW should be enabled.
+To allow access to HTTP connections, input the following into your CLI:
+
+$ sudo ufw allow http
+
+Now the firewall should be configured to only allow connections to the Ethereum RPC and network port.
+Other connections you need can be added to the firewall, but only those needed and removing unneeded ones.
+This should prevent security misconfigurations related to Ethereum in the instance of a Port Scanner searching for a open account to steal funds.
+
+Note:
+On geth nodes, NEVER enter the following into your CLI as it unlocks external access to your account allowing Port Scanners to find your account and steal funds:
+
+$ geth — rpc — rpcaddr 0.0.0.0 — rpcport 8545 — rpcapi “db, eth, net, web3, personal” — ipcapi “admin,eth,debug,personal,web3” — unlock <addrs>
