@@ -1,0 +1,43 @@
+const Web3 = require('web3');
+const crypto = require('crypto');
+const bip39 = require('bip39');
+const hdkey = require('ethereumjs-wallet/hdkey');
+const web3 = new Web3();
+
+//generates private key using secure cryptographic key length of 256 bits
+const privateKey = crypto.randomBytes(32);
+
+//generates an ETH account by utilizing the cryptographic key generated above
+const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+
+//loop to verify that address is unique and valid
+let addressIsValid = false;
+while (!addressIsValid) {
+  if (web3.utils.isAddress(account.address) && !web3.eth.accounts.wallet[account.address]) {
+    addressIsValid = true;
+  } else {
+    privateKey = crypto.randomBytes(32);
+    account = web3.eth.accounts.privateKeyToAccount(privateKey);
+  }
+}
+
+//public key of ETH account
+const publicKey = account.address;
+
+//mnemonic seed phrase generator for user so they can regenerate their HD wallet and recover public key if they lose access to private key
+const mnemonic = bip39.generateMnemonic();
+
+//derives hierarchical deterministic (HD) wallet from seed phrase
+const hdWallet = hdkey.fromMasterSeed(bip39.mnemonicToSeedSync(mnemonic));
+
+//derive new ETH address from HD wallet by specific path
+const path = "m/44'/60'/0'/0/0";
+const derivedWallet = hdWallet.derivePath(path);
+
+//verifies new ETH address is the same as the one generated before
+if (derivedWallet.getChecksumAddressString() !== publicKey) {
+  throw new Error('Derived address does not match account address');
+}
+
+//saves mnemonic seed phrase
+console.log("Mnemonic seed phrase:", mnemonic);
